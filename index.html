@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AR Car Customizer with Hotspots</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
+  <style>
+    body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #f0f0f0; font-family: sans-serif; }
+    model-viewer { width: 100%; height: 80%; }
+    .controls-panel {
+      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: rgba(255,255,255,0.9); border-radius: 12px;
+      padding: 15px; display: flex; flex-direction: column;
+      align-items: center; gap: 15px;
+    }
+    .button-list { display: flex; gap: 10px; }
+    .color-selector {
+      width: 45px; height: 45px; border-radius: 10px; border: 2px solid #fff;
+      cursor: pointer;
+    }
+    .tyre-btn, .mode-btn {
+      padding: 5px 1px; cursor: pointer; font-weight: 600; color: #fff;
+    }
+    .tyre-btn {
+      background: #ffffff;
+      border: 1px solid #e0e0e0;
+      border-radius: 5px;
+    }
+    .mode-btn { background: #28a745; }
+    .Hotspot {
+    width: 20px;
+    height: 20px;
+    background: #fff;
+    border-radius: 50%;
+    padding: 0;
+    border: 2px solid #5289c1;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.2s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+.Hotspot:hover {
+    background: #e0e0e0;
+    transform: scale(1.2);
+}
+.HotspotAnnotation {
+    display: none;
+}
+#info-panel {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(255, 255, 255, 0.95);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    z-index: 1000;
+    text-align: center;
+    max-width: 300px;
+}
+#info-panel p {
+    color: #555555; /* A slightly dark grey */
+    font-size: 16px; /* Adjust as needed */
+    line-height: 1.5; /* Improve readability */
+}
+#close-panel {
+    background-color: #000000;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 8px 16px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+.brand-logo {
+  display: block;
+  text-align: center;
+  width: auto;
+}
+.brand-logo-img {
+  width: 8%;
+  height: auto;
+}
+@media (min-width: 780px) {
+  .no-desktop {
+    display: none !important;
+  }
+}
+@media (max-width: 780px) {
+  .brand-logo-img {
+    width: 6rem;
+  }
+  .colorgrid {
+    bottom: 20% !important;
+    right: -7% !important;
+  }
+  .tyregrid {
+    bottom: 50% !important;
+    right: -7% !important;
+  }
+}
+.colorgrid {
+  position: absolute;
+  bottom: 35%;
+  right: 0;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+#color-grid {
+  display: grid;
+  gap: 10px;
+}
+.tyregrid {
+  position: absolute;
+  bottom: 62%;
+  right: 0;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+.tyre-icon {
+  width: 35px;
+}
+.explode {
+    position: absolute;
+    display: block;
+    bottom: 0;
+    left: 50%;
+}
+.ar-icon {
+  background-image : url(assets/icons/ar-icon.png);
+  background-size: cover;
+  display: inline-block;
+  height: 25px;
+  width: 25px;
+  margin-right: 8px;  
+}
+.mainControlsWrapper {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: conter;
+  align-items: flex-end;
+}
+.bg-pink-500 {
+  background-color: #ec4899;
+}
+.bg-blue-500 {
+  background-color: #3b82f6;
+}
+.bg-green-500 {
+  background-color: #22c55e;
+}
+.color-selector {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transition: transform 0.1s, border-color 0.1s;
+}
+.color-selector:hover {
+  transform: scale(1.1);
+}
+  </style>
+</head>
+<body>
+  <div class="brand-logo">
+    <img class="brand-logo-img" src="assets/logo/Novara.png" alt="brand-logo" width="50%">
+  </div>
+  <model-viewer
+    id="car-viewer"
+    src="assets/glb/pink_car.glb"
+    ios-src="assets/usdz/pink_car.usdz"
+    environment-image="assets/shadow/tree_shadow.hdr"
+    ar
+    ar-modes="webxr scene-viewer quick-look"
+    ar-placement="floor"
+    ar-scale="fixed"
+    camera-controls
+    shadow-intensity="1"
+    field-of-view="30deg"
+    xr-environment
+    disable-pan>
+    <button class="Hotspot" slot="hotspot-1" id="hotspot-1" data-visibility-attribute="visible" data-hotspot-id="1"
+        data-surface="49 0 2590 2592 2520 0.062 0.360 0.579"
+        data-title="Tyres"
+        data-description="19-inch Diamond-cut Graphene Alloy wheels (airless, self-sealing, magnetic levitation).">
+        <div class="HotspotAnnotation">Tyre</div>
+    </button>
+    <button class="Hotspot" slot="hotspot-3" id="hotspot-3" data-visibility-attribute="visible" data-hotspot-id="3"
+        data-surface="81 0 2870 1577 2873 0.446 0.058 0.496"
+        data-title="Speed"
+        data-description="100 km/r within 1.45 seconds. Governed Speed 350km/h">
+        <div class="HotspotAnnotation">Speed</div>
+    </button>
+    <button class="Hotspot" slot="hotspot-4" id="hotspot-4" data-visibility-attribute="visible" data-hotspot-id="4"
+        data-surface="95 0 1425 1426 395 0.030 0.431 0.539"
+        data-title="WindowsElectro"
+        data-description="Chromic Smart Glass serves as a full Augmented Reality HUD.">
+        <div class="HotspotAnnotation">Windows</div>
+    </button>
+    <button class="Hotspot" slot="hotspot-5" id="hotspot-5" data-visibility-attribute="visible" data-hotspot-id="5"
+        data-surface="102 0 1064 171 662 0.775 0.187 0.038"
+        data-title="Key Tech"
+        data-description="Omni-Pilot AI and Bio-Lock interior (adapts to occupant comfort).">
+        <div class="HotspotAnnotation">Key Tech</div>
+    </button>
+    <button class="Hotspot" slot="hotspot-6" id="hotspot-6" data-visibility-attribute="visible" data-hotspot-id="6"
+        data-surface="94 0 1338 1339 167 0.032 0.967 0.001"
+        data-title="Engine & Mileage"
+        data-description="Quantum Fusion Drive (QFD): Zero-emission, silent power. Perpetual Range (Effectively Infinite)">
+        <div class="HotspotAnnotation">Engine</div>
+    </button>
+    <button slot="ar-button" style="display: none;"></button>
+  </model-viewer>
+  <div id="mainControlsWrapper">
+    <button id="modeSwitch" class="mode-btn" style="display:none;">Switch to Tyre Mode</button>
+
+    <div id="colorControls" class="colorgrid">
+      <div class="button-list" id="color-grid">
+        <button class="color-selector bg-pink-500" data-model="assets/glb/pink_car.glb"></button>
+        <button class="color-selector bg-blue-500" data-model="assets/glb/blue_car.glb"></button>
+        <button class="color-selector bg-green-500" data-model="assets/glb/green_car.glb"></button>
+      </div>
+    </div>
+    <div id="tyreControls" class="tyregrid">
+      <div class="button-list" id="color-grid">
+        <button id="tyre-switch-btn" class="tyre-btn" data-model="assets/tyre_styles/tyre_blue.glb"><span><img class="tyre-icon" src="assets/icons/one.PNG"></span></button>
+        <button id="tyre-switch-btn2" class="tyre-btn" data-model="assets/tyre_styles/tyre_2_blue.glb"><span><img class="tyre-icon" src="assets/icons/two.PNG"></span></button>
+        <button id="open-doors" class="tyre-btn"><span><img class="tyre-icon" src="assets/icons/door-open.png"></span>
+      </div>
+    </div>
+  </div>
+  <!-- INFO PANEL -->
+  <div id="info-panel">
+    <h3 id="panel-title"></h3>
+    <p id="panel-content"></p>
+    <button id="close-panel">Close</button>
+  </div>
+  <div id="explodeCar" class="fixed-bottom d-flex justify-content-center p-3">
+    <button id="explodebtn" type="button" class="btn btn-primary me-2" data-model="assets/explode/pink_car.glb">Explode</button>
+    <button type="button" slot="ar-button" id="ar-button" class="btn btn-secondary d-flex justify-content-center align-items-center" onclick="activateAR()"><i class="ar-icon"></i>View in AR</button>
+  </div>
+  <script>
+    // INFO PANEL LOGIC
+    document.addEventListener('DOMContentLoaded', () => {
+        const infoPanel = document.getElementById('info-panel');
+        const panelTitle = document.getElementById('panel-title');
+        const panelContent = document.getElementById('panel-content');
+        const closeButton = document.getElementById('close-panel');
+
+        const hotspots = document.querySelectorAll('.Hotspot');
+        hotspots.forEach(hotspot => {
+            hotspot.addEventListener('click', (event) => {
+                event.preventDefault();
+                
+                const title = hotspot.getAttribute('data-title');
+                const description = hotspot.getAttribute('data-description');
+
+                panelTitle.textContent = title;
+                panelContent.textContent = description;
+
+                infoPanel.style.display = 'block';
+            });
+        });
+
+        closeButton.addEventListener('click', () => {
+            infoPanel.style.display = 'none';
+        });
+
+        modelViewer.addEventListener('ar-status', (event) => {
+            if (event.detail.status === 'supported') {
+                console.log('AR is supported on this device.');
+            }
+        });
+    });
+    function activateAR() {
+      if (modelViewer.canActivateAR) {
+          modelViewer.activateAR();
+          console.log('Attempting to activate AR...');
+      } else {
+          console.error('AR is not supported or ready on this device.');
+      }
+    }
+
+
+    const modelViewer = document.querySelector('#car-viewer');
+    // COLOR/TYRE SWITCHER
+    const modeSwitch = document.getElementById('modeSwitch');
+    const colorControls = document.getElementById('colorControls');
+    const tyreControls = document.getElementById('tyreControls');
+    let currentMode = 'color';
+
+    modeSwitch.addEventListener('click', () => {
+      if (currentMode === 'color') {
+        currentMode = 'tyre';
+        colorControls.style.display = 'none';
+        tyreControls.style.display = 'block';
+        modeSwitch.textContent = 'Switch to Color Mode';
+      } else {
+        currentMode = 'color';
+        colorControls.style.display = 'block';
+        tyreControls.style.display = 'none';
+        modeSwitch.textContent = 'Switch to Tyre Mode';
+      }
+    });
+
+    function attachHandlers(selector) {
+      document.querySelectorAll(selector).forEach(button => {
+        button.addEventListener('click', () => {
+          const modelFile = button.getAttribute('data-model');
+          if (modelFile) modelViewer.src = modelFile;
+        });
+      });
+    }
+    attachHandlers('.color-selector');
+    attachHandlers('.tyre-btn');
+    
+    //explode start
+    const explodeButton = document.getElementById('explodebtn');
+    //getting the same color of current model
+    function updateExplodeButtonModel() {
+      if (!explodeButton) {
+        console.error('ERROR: The Explode button was not found.');
+        return;
+      }
+      const currentSrc = modelViewer.src; 
+      console.log('Current main modelViewer.src:', currentSrc);
+      const regex = /(\w+)_car\.glb$/i; 
+      const fileNameMatch = currentSrc.match(regex);
+      let color = 'blue';
+      if (fileNameMatch && fileNameMatch[1]) {
+        color = fileNameMatch[1].toLowerCase(); 
+        console.log(`Extracted color for explode model: ${color}`);
+      } else {
+        console.warn(`Could not extract color. Using default: ${color}`);
+      }
+      const newExplodeModel = `assets/explode/${color}_car.glb`;
+      explodeButton.setAttribute('data-model', newExplodeModel);
+      console.log('Explode button data-model updated to:', newExplodeModel);
+      const newExplodeModelUsdz = `assets/explode/usdz/${color}_car.usdz`;
+      explodeButton.setAttribute('data-usdz', newExplodeModelUsdz);
+    }
+    function loadAndPlayExplode() {
+      const newSrc = this.dataset.model;
+      modelViewer.src = newSrc;
+      //loading usdz
+      const newIosSrc = this.dataset.usdz;
+      if (newIosSrc) {
+          modelViewer.iosSrc = newIosSrc;
+      }
+    }
+    explodeButton.addEventListener('click', loadAndPlayExplode);
+    modelViewer.addEventListener('load', updateExplodeButtonModel);
+    //explode end
+    //model-color-and-tyre-change-logic-start
+    const tyreButton = document.getElementById('tyre-switch-btn');
+    const tyreButtonTwo = document.getElementById('tyre-switch-btn2'); 
+    function updateTyreButtonModel() {
+      const currentSrc = modelViewer.src; 
+      console.log('Current modelViewer.src:', currentSrc);
+      const regex = /(\w+)_car\.glb$/i;
+      const fileNameMatch = currentSrc.match(regex);
+      let color = 'pink';
+      if (fileNameMatch && fileNameMatch[1]) {
+        color = fileNameMatch[1].toLowerCase(); 
+        console.log(`SUCCESS C: Extracted color: ${color}`);
+      } else {
+        console.warn(`FAIL C: Could not extract color using regex "${regex}". Match was:`, fileNameMatch);
+      }
+      const newTyreModel = `assets/tyre_styles/${color}_car.glb`;
+      const newTyreModelTwo = `assets/glb/${color}_car.glb`;
+      //adding ios usdz models
+      const newTyreModelUsdz = `assets/tyre_styles/usdz/${color}_car.usdz`;
+      const newTyreModelTwoUsdz = `assets/usdz/${color}_car.glb`;
+      tyreButton.setAttribute('data-model', newTyreModel);
+      tyreButtonTwo.setAttribute('data-model', newTyreModelTwo);
+      tyreButton.setAttribute('data-usdz', newTyreModelUsdz);
+      tyreButtonTwo.setAttribute('data-usdz', newTyreModelTwoUsdz);
+      console.log('New data-model set to:', tyreButton.getAttribute('data-model'));
+      console.log('--- Diagnostics Complete ---');
+    }
+    attachHandlers('[data-model*="_car.glb"]'); 
+    modelViewer.addEventListener('load', updateTyreButtonModel);
+    //color-tyre-logic-end
+
+    //door open start
+    const doorHotspot = document.getElementById('open-doors');
+    doorHotspot.addEventListener('click', () => {
+      console.log('door open start');
+        modelViewer.currentTime = 0;
+        modelViewer.animationName = 'Armature|doorsOpeningAction.004';
+        modelViewer.play();
+        const durationInSeconds = modelViewer.duration;
+        if (durationInSeconds > 0) {
+            setTimeout(() => {
+                modelViewer.pause();
+            }, durationInSeconds * 1000);
+        } else {
+          console.log('animation not found');
+        }
+    });
+    //door open end
+  </script>
+</body>
+</html>
